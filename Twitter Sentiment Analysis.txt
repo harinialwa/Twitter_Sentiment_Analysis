@@ -1,0 +1,172 @@
+*Sample Code*
+
+# Importing necessary libraries
+import re
+import tweepy
+from tweepy import OAuthHandler
+from textblob import TextBlob
+
+class TwitterClient(object):
+    '''
+    Generic Twitter Class for sentiment analysis.
+    '''
+    def __init__(self):
+        '''
+        Class constructor or initialization method.
+        '''
+        # keys and tokens from the Twitter Dev Console
+        consumer_key = 'XXXXXXXXXXXXXXXXXXXXXXXX'
+        consumer_secret = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        access_token = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        access_token_secret = 'XXXXXXXXXXXXXXXXXXXXXXXXX'
+
+        # Attempt authentication
+        try:
+            # Create OAuthHandler object
+            self.auth = OAuthHandler(consumer_key, consumer_secret)
+            # Set access token and secret
+            self.auth.set_access_token(access_token, access_token_secret)
+            # Create tweepy API object to fetch tweets
+            self.api = tweepy.API(self.auth)
+        except Exception as e:
+            print(f"Error: Authentication Failed. {str(e)}")
+
+# The following code will be used to clean tweets by removing links, mentions, and special characters
+    def clean_tweet(self, tweet):
+        '''
+        Utility function to clean tweet text by removing links, special characters
+        using simple regex statements.
+        '''
+        return ' '.join(re.sub(r"(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
+
+    # This function will be used to analyze the sentiment of the tweet
+    def get_tweet_sentiment(self, tweet):
+        '''
+        Utility function to classify sentiment of passed tweet
+        using textblob's sentiment method
+        '''
+        # Create TextBlob object of passed tweet text
+        analysis = TextBlob(self.clean_tweet(tweet))
+        # Set sentiment
+        if analysis.sentiment.polarity > 0:
+            return 'positive'
+        elif analysis.sentiment.polarity == 0:
+            return 'neutral'
+        else:
+            return 'negative'
+
+    # This function fetches tweets and returns parsed data (tweets and sentiment)
+    def get_tweets(self, query, count=10):
+        '''
+        Main function to fetch tweets and parse them.
+        '''
+        # Empty list to store parsed tweets
+        tweets = []
+
+        try:
+            # Call Twitter API to fetch tweets
+            fetched_tweets = self.api.search(q=query, count=count)
+
+            # Parsing tweets one by one
+            for tweet in fetched_tweets:
+                # Empty dictionary to store required params of a tweet
+                parsed_tweet = {}
+
+                # Saving text of tweet
+                parsed_tweet['text'] = tweet.text
+                # Saving sentiment of tweet
+                parsed_tweet['sentiment'] = self.get_tweet_sentiment(tweet.text)
+
+                # Appending parsed tweet to tweets list
+                if tweet.retweet_count > 0:
+                    # If tweet has retweets, ensure that it is appended only once
+                    if parsed_tweet not in tweets:
+                        tweets.append(parsed_tweet)
+                else:
+                    tweets.append(parsed_tweet)
+
+            # Return parsed tweets
+            return tweets
+
+        except tweepy.TweepError as e:
+            # Print error (if any)
+            print("Error : " + str(e))
+
+# Main function that executes the sentiment analysis
+def main():
+    # Creating object of TwitterClient Class
+    api = TwitterClient()
+    # Calling function to get tweets
+    tweets = api.get_tweets(query='Donald Trump', count=200)
+
+    # Picking positive tweets from tweets
+    ptweets = [tweet for tweet in tweets if tweet['sentiment'] == 'positive']
+    # Percentage of positive tweets
+    print(f"Positive tweets percentage: {100 * len(ptweets) / len(tweets)} %")
+
+    # Picking negative tweets from tweets
+    ntweets = [tweet for tweet in tweets if tweet['sentiment'] == 'negative']
+    # Percentage of negative tweets
+    print(f"Negative tweets percentage: {100 * len(ntweets) / len(tweets)} %")
+
+    # Percentage of neutral tweets
+    print(f"Neutral tweets percentage: {100 * (len(tweets) - (len(ntweets) + len(ptweets))) / len(tweets)} %")
+
+    # Printing first 5 positive tweets
+    print("\n\nPositive tweets:")
+    for tweet in ptweets[:5]:
+        print(tweet['text'])
+
+    # Printing first 5 negative tweets
+    print("\n\nNegative tweets:")
+    for tweet in ntweets[:5]:
+        print(tweet['text'])
+
+# Calling the main function to execute the code
+if __name__ == "__main__":
+    # Calling the main function
+    main()
+
+* Output Breakdown:*
+
+
+1. Authentication:
+What happens: The __init__ method is responsible for authenticating with Twitter using your credentials.
+Expected output if successful: No output. If authentication fails, it prints an error message.
+Output example:
+plaintext
+Copy code
+Error: Authentication Failed. [Error details]
+2. Tweet Fetching and Sentiment Analysis:
+The get_tweets() method fetches tweets containing the query Donald Trump (or whatever term you use).
+After fetching tweets, each tweet undergoes sentiment analysis with TextBlob and is classified into positive, neutral, or negative.
+3. Percentage of Positive, Negative, and Neutral Tweets:
+The percentages of positive, negative, and neutral tweets are calculated and printed.
+Example Output (depending on the results from Twitter):
+plaintext
+Copy code
+Positive tweets percentage: 45.0 %
+Negative tweets percentage: 35.0 %
+Neutral tweets percentage: 20.0 %
+4. Positive Tweets:
+The first 5 positive tweets are displayed.
+Example Output:
+plaintext
+Copy code
+Positive tweets:
+"Donald Trump speaks about the future of America."
+"Exciting news! Trump's policies are making an impact."
+"Trump's leadership is revitalizing the economy."
+"We need more policies like Trump’s to boost job growth."
+"Trump's plan for the future looks promising."
+5. Negative Tweets:
+The first 5 negative tweets are displayed.
+Example Output:
+plaintext
+Copy code
+Negative tweets:
+"Donald Trump is ruining America."
+"Trump's policies are disastrous for the country."
+"Another poor decision by Trump."
+"The world is better off without Trump's leadership."
+"Trump has failed to live up to his promises."
